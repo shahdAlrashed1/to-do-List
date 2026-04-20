@@ -5,11 +5,24 @@ const todos = ref([])
 const name = ref('')
 const input_content = ref('')
 const input_category = ref(null)
+const selectedCategory = ref('all')
 
-const todo_asc = computed(() => todos.value.sort((a, b) =>  {
-  return a.createdAt - b.createdAt
-}))
 
+//فلترة للتصنيف
+//ترتيب المصفوفة تصاعديا
+const filteredTodos = computed(() => {
+  let result = [...todos.value]
+
+  if (selectedCategory.value !== 'all') {
+    result = result.filter(todo => {
+      return todo.category === selectedCategory.value
+    })
+  }
+
+  return result.sort((a, b) => a.createdAt - b.createdAt)
+})
+
+// إضافة المهام إلى القائمة وافراغ حقل التعبئة بعد إضافة المهمة
 const addTodo = () => {
   if(input_content.value.trim() === '' || input_content.value === null){
     return
@@ -26,19 +39,23 @@ const addTodo = () => {
   input_category.value = null
 }
 
+// زر حذف المهمة
 const removeTodo = (todo) => {
+  const confirmed = confirm(`هل أنت متأكد من حذف: "${todo.content}"؟`)
+
+  if (!confirmed) {
+    return
+  }
+
   todos.value = todos.value.filter(t => t !== todo)
 }
 
+// مراقبة قائمة المهام عند حدوث تغيرات وحفظها بعد التحديث
 watch(todos, (newVal) => {
   localStorage.setItem('todos', JSON.stringify(newVal))
 }, { deep: true })
 
-watch(todos, (newVal) => {
-  localStorage.setItem('todos', JSON.stringify(newVal))
-})
-
-
+// عرض نتيجة التغيرات على الصفحة وحفظها بعد التحديث
 onMounted(() => {
   name.value = localStorage.getItem('name') || ''
   todos.value = JSON.parse(localStorage.getItem('todos')) || []
@@ -55,11 +72,18 @@ onMounted(() => {
       
       <section class="create-todo">
         <h3>CREATE A TODO</h3>
+
+        <!-- يمنع إعادة تحميل الصفحة -->
         <form @submit.prevent="addTodo">
           <h4>What's on your todo list?</h4>
           <input type="text" placeholder="Add a new task..." v-model="input_content">
           <div>{{ input_content }}</div>
           <h4>pick a category</h4>
+          <div class="filters">
+              <button type="button" @click="selectedCategory = 'all'" class="filterBtn">All</button>
+              <button type="button" @click="selectedCategory = 'Business'" class="filterBtn bus">Business</button>
+              <button type="button" @click="selectedCategory = 'Personal'" class="filterBtn per">Personal</button>
+         </div>
           <div class="options">
             <label>
               <input type="radio" name="category" value="Business" v-model="input_category">
@@ -78,7 +102,7 @@ onMounted(() => {
     <section class="todo-list">
       <h3>TODO LIST</h3>
       <div class="list">
-        <div v-for="todo in todo_asc" :key="todo.createdAt" :class="['todo-item', { done: todo.done }]">
+        <div v-for="todo in filteredTodos" :key="todo.createdAt" :class="['todo-item', { done: todo.done }]">
           <label>
             <input type="checkbox" v-model="todo.done">
             <span :class="`bubble ${todo.category}`"></span>
